@@ -1,0 +1,12 @@
+fastapi[standard]
+pydantic-settings
+sqlalchemy
+asyncpg
+pydantic
+alembic
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+numpy
+Pillow
+onnxruntime
