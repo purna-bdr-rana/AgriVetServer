@@ -53,15 +53,28 @@ def get_disease_session() -> rt.InferenceSession:
     return disease_session
 
 
-# Shared image preprocessing
-def preprocess_image(image_bytes: bytes, size: int = 224) -> np.ndarray:
-    """Decode bytes → RGB PIL image → float32 (1, H, W, 3) array in [0, 255] range."""
+# --- PREPROCESSING FUNCTIONS ---
+
+def preprocess_disease_image(image_bytes: bytes, size: int = 224) -> np.ndarray:
+    """
+    Original preprocessing for MobileNetV3 disease classification.
+    Decode bytes → RGB PIL image → float32 (1, H, W, 3) array in [0, 255] range.
+    """
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     img = img.resize((size, size), Image.BILINEAR)
     
     img_arr = np.array(img, dtype=np.float32)
     return np.expand_dims(img_arr, axis=0)  # shape: (1, 224, 224, 3)
 
+
+def preprocess_validator_image(image_bytes: bytes, size: int = 224) -> np.ndarray:
+    """Decode bytes → RGB PIL image → normalised float32 (1, H, W, 3) array."""
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img = img.resize((size, size), Image.BILINEAR)
+    arr = np.array(img, dtype=np.float32) / 255.0
+    return np.expand_dims(arr, axis=0)
+
+# --- INFERENCE LOGIC ---
 
 def run_inference(session: rt.InferenceSession, tensor: np.ndarray) -> list[float]:
     """Run a single forward pass and return probabilities."""
@@ -96,7 +109,8 @@ async def validate_image(file: UploadFile = File(...)):
     image_bytes = await file.read()
 
     try:
-        tensor  = preprocess_image(image_bytes)
+        # Using the specific validator preprocessing
+        tensor  = preprocess_validator_image(image_bytes)
         session = get_validator_session()
         scores  = run_inference(session, tensor)
     except Exception as e:
@@ -123,7 +137,8 @@ async def classify_disease(file: UploadFile = File(...)):
     image_bytes = await file.read()
 
     try:
-        tensor  = preprocess_image(image_bytes)
+        # Using the original disease model preprocessing
+        tensor  = preprocess_disease_image(image_bytes)
         session = get_disease_session()
         scores  = run_inference(session, tensor)
     except Exception as e:
